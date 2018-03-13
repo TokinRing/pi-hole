@@ -29,24 +29,24 @@ set -e
 # It's still a work in progress, so you may see some variance in this guideline until it is complete
 
 # Location for final installation log storage
-installLogLoc=/etc/pihole/install.log
+installLogLoc=/var/log/pihole-install.log
 # This is an important file as it contains information specific to the machine it's being installed on
-setupVars=/etc/pihole/setupVars.conf
+setupVars=/usr/local/etc/pihole/setupVars.conf
 # Pi-hole uses lighttpd as a Web server, and this is the config file for it
 # shellcheck disable=SC2034
-lighttpdConfig=/etc/lighttpd/lighttpd.conf
+lighttpdConfig=/usr/local/etc/lighttpd/lighttpd.conf
 # This is a file used for the colorized output
 coltable=/opt/pihole/COL_TABLE
 
 # We store several other folders and
 webInterfaceGitUrl="https://github.com/pi-hole/AdminLTE.git"
-webInterfaceDir="/var/www/html/admin"
+webInterfaceDir="/usr/local/www/pihole-admin"
 piholeGitUrl="https://github.com/pi-hole/pi-hole.git"
-PI_HOLE_LOCAL_REPO="/etc/.pihole"
+PI_HOLE_LOCAL_REPO="/usr/local/pihole"
 # These are the names of piholes files, stored in an array
 PI_HOLE_FILES=(chronometer list piholeDebug piholeLogFlush setupLCD update version gravity uninstall webpage)
 # This folder is where the Pi-hole scripts will be installed
-PI_HOLE_INSTALL_DIR="/opt/pihole"
+PI_HOLE_INSTALL_DIR="/usr/local/www/pihole"
 useUpdateVars=false
 
 # Pi-hole needs an IP address; to begin, these variables are empty since we don't know what the IP is until
@@ -218,6 +218,21 @@ elif command -v rpm &> /dev/null; then
     LIGHTTPD_CFG="lighttpd.conf.fedora"
     DNSMASQ_USER="nobody"
 
+# If apt-get or rpm is not found, check for pkg to see if it's a FreeBSD family OS
+elif command -v pkg &> /dev/null; then
+  PKG_MANAGER="pkg"
+
+  # UPDATE_PKG_CACHE=":"
+  PKG_INSTALL=(${PKG_MANAGER} install -y)
+  PKG_COUNT="${PKG_MANAGER} upgrade | wc -l"
+  INSTALLER_DEPS=(git newt)
+  PIHOLE_DEPS=(curl dnsmasq findutils nmap netcat sudo unzip wget libidn2 psmisc)
+  PIHOLE_WEB_DEPS=(lighttpd php56 php56-sqlite3 php56-pdo)
+  LIGHTTPD_USER="lighttpd"
+  LIGHTTPD_GROUP="lighttpd"
+  LIGHTTPD_CFG="lighttpd.conf.freebsd"
+  DNSMASQ_USER="nobody"
+
 # If neither apt-get or rmp/dnf are found
 else
   # it's not an OS we can support,
@@ -373,6 +388,23 @@ find_IPv4_information() {
   IPV4_ADDRESS=$(ip -o -f inet addr show | grep "${IPv4bare}" |  awk '{print $4}' | awk 'END {print}')
   # Get the default gateway (the way to reach the Internet)
   IPv4gw=$(awk '{print $3}' <<< "${route}")
+
+}
+
+# FreeBSD version of the above command
+find_fbsd_IPv4_information() {
+  # Named, local variables
+  local route
+  # Find IP used to route to outside world by checking the the route to Google's public DNS server
+  route=$(route -n get 8.8.8.8)
+  # Use awk to strip out just the interface device as it is used in future commands
+  IPv4dev=$(echo "$route" | grep interface | sed -e 's/interface://' | tr -d ' ')
+  # Get just the IP address
+  IPv4bare=$(ifconfig $IPv4dev | grep inet | sed -e 's/netmask*.*//' | sed -e 's/^.*inet//' | tr -d ' ')
+  # Append the CIDR notation to the IP address
+  IPV4_ADDRESS=$(echo "$IPv4bare/$IPv4subnet" | tr -d ' ')
+  # Get the default gateway (the way to reach the Internet)
+  IPv4gw=$(echo "$route" | grep gateway | sed -e 's/gateway://' | tr -d ' ')
 
 }
 
