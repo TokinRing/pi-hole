@@ -21,6 +21,8 @@
 # instead of continuing the installation with something broken
 set -e
 
+# TODO: Replace all instances of static file paths with path variable.
+
 ######## VARIABLES #########
 # For better maintainability, we store as much information that can change in variables
 # This allows us to make a change in one place that can propogate to all instances of the variable
@@ -28,25 +30,49 @@ set -e
 # Local variables will be in lowercase and will exist only within functions
 # It's still a work in progress, so you may see some variance in this guideline until it is complete
 
-# Location for final installation log storage
-installLogLoc=/var/log/pihole-install.log
-# This is an important file as it contains information specific to the machine it's being installed on
-setupVars=/usr/local/etc/pihole/setupVars.conf
-# Pi-hole uses lighttpd as a Web server, and this is the config file for it
-# shellcheck disable=SC2034
-lighttpdConfig=/usr/local/etc/lighttpd/lighttpd.conf
-# This is a file used for the colorized output
-coltable=/opt/pihole/COL_TABLE
+os_version=`uname`
 
-# We store several other folders and
-webInterfaceGitUrl="https://github.com/pi-hole/AdminLTE.git"
-webInterfaceDir="/usr/local/www/pihole-admin"
-piholeGitUrl="https://github.com/pi-hole/pi-hole.git"
-PI_HOLE_LOCAL_REPO="/usr/local/pihole"
 # These are the names of piholes files, stored in an array
-PI_HOLE_FILES=(chronometer list piholeDebug piholeLogFlush setupLCD update version gravity uninstall webpage)
 # This folder is where the Pi-hole scripts will be installed
-PI_HOLE_INSTALL_DIR="/usr/local/www/pihole"
+PI_HOLE_FILES=(chronometer list piholeDebug piholeLogFlush setupLCD update version gravity uninstall webpage)
+
+# Check if the host is FreeBSD
+if [[os_version == "FreeBSD"]]; then
+    # Location for final installation log storage
+    installLogLoc=/var/log/pihole-install.log
+    # This is an important file as it contains information specific to the machine it's being installed on
+    setupVars=/usr/local/etc/pihole/setupVars.conf
+    # Pi-hole uses lighttpd as a Web server, and this is the config file for it
+    # shellcheck disable=SC2034
+    lighttpdConfig=/usr/local/etc/lighttpd/lighttpd.conf
+    # This is a file used for the colorized output
+    coltable=/opt/pihole/COL_TABLE
+
+    # We store several other folders and
+    webInterfaceDir="/usr/local/www/pihole-admin"
+    PI_HOLE_LOCAL_REPO="/usr/local/etc/.pihole"
+    PI_HOLE_INSTALL_DIR="/usr/local/www/pihole"
+
+# Or else assume the host is a Linux
+else
+    # Location for final installation log storage
+    installLogLoc=/etc/pihole/install.log
+    # This is an important file as it contains information specific to the machine it's being installed on
+    setupVars=/etc/pihole/setupVars.conf
+    # Pi-hole uses lighttpd as a Web server, and this is the config file for it
+    # shellcheck disable=SC2034
+    lighttpdConfig=/etc/lighttpd/lighttpd.conf
+    # This is a file used for the colorized output
+    coltable=/opt/pihole/COL_TABLE
+
+    # We store several other folders and
+    webInterfaceDir="/var/www/html/admin"
+    PI_HOLE_LOCAL_REPO="/etc/.pihole"
+    PI_HOLE_INSTALL_DIR="/opt/pihole"
+fi
+
+webInterfaceGitUrl="https://github.com/pi-hole/AdminLTE.git"
+piholeGitUrl="https://github.com/pi-hole/pi-hole.git"
 useUpdateVars=false
 
 # Pi-hole needs an IP address; to begin, these variables are empty since we don't know what the IP is until
@@ -376,42 +402,46 @@ resetRepo() {
 # We need to know the IPv4 information so we can effectively setup the DNS server
 # Without this information, we won't know where to Pi-hole will be found
 find_IPv4_information() {
-  # Named, local variables
-  local route
-  # Find IP used to route to outside world by checking the the route to Google's public DNS server
-  route=$(ip route get 8.8.8.8)
-  # Use awk to strip out just the interface device as it is used in future commands
-  IPv4dev=$(awk '{for (i=1; i<=NF; i++) if ($i~/dev/) print $(i+1)}' <<< "${route}")
-  # Get just the IP address
-  IPv4bare=$(awk '{print $7}' <<< "${route}")
-  # Append the CIDR notation to the IP address
-  IPV4_ADDRESS=$(ip -o -f inet addr show | grep "${IPv4bare}" |  awk '{print $4}' | awk 'END {print}')
-  # Get the default gateway (the way to reach the Internet)
-  IPv4gw=$(awk '{print $3}' <<< "${route}")
-
-}
-
-# FreeBSD version of the above command
-find_fbsd_IPv4_information() {
-  # Named, local variables
-  local route
-  # Find IP used to route to outside world by checking the the route to Google's public DNS server
-  route=$(route -n get 8.8.8.8)
-  # Use awk to strip out just the interface device as it is used in future commands
-  IPv4dev=$(echo "$route" | grep interface | sed -e 's/interface://' | tr -d ' ')
-  # Get just the IP address
-  IPv4bare=$(ifconfig $IPv4dev | grep inet | sed -e 's/netmask*.*//' | sed -e 's/^.*inet//' | tr -d ' ')
-  # Append the CIDR notation to the IP address
-  IPV4_ADDRESS=$(echo "$IPv4bare/$IPv4subnet" | tr -d ' ')
-  # Get the default gateway (the way to reach the Internet)
-  IPv4gw=$(echo "$route" | grep gateway | sed -e 's/gateway://' | tr -d ' ')
-
+  # Check if the host is FreeBSD
+  if [[ os_version == "FreeBSD" ]]; then
+    # Named, local variables
+    local route
+    # Find IP used to route to outside world by checking the the route to Google's public DNS server
+    route=$(route -n get 8.8.8.8)
+    # Use awk to strip out just the interface device as it is used in future commands
+    IPv4dev=$(echo "$route" | grep interface | sed -e 's/interface://' | tr -d ' ')
+    # Get just the IP address
+    IPv4bare=$(ifconfig $IPv4dev | grep inet | sed -e 's/netmask*.*//' | sed -e 's/^.*inet//' | tr -d ' ')
+    # Append the CIDR notation to the IP address
+    IPV4_ADDRESS=$(echo "$IPv4bare/$IPv4subnet" | tr -d ' ')
+    # Get the default gateway (the way to reach the Internet)
+    IPv4gw=$(echo "$route" | grep gateway | sed -e 's/gateway://' | tr -d ' ')
+  # Or else assume the host is a Linux
+  else
+    # Named, local variables
+    local route
+    # Find IP used to route to outside world by checking the the route to Google's public DNS server
+    route=$(ip route get 8.8.8.8)
+    # Use awk to strip out just the interface device as it is used in future commands
+    IPv4dev=$(awk '{for (i=1; i<=NF; i++) if ($i~/dev/) print $(i+1)}' <<< "${route}")
+    # Get just the IP address
+    IPv4bare=$(awk '{print $7}' <<< "${route}")
+    # Append the CIDR notation to the IP address
+    IPV4_ADDRESS=$(ip -o -f inet addr show | grep "${IPv4bare}" |  awk '{print $4}' | awk 'END {print}')
+    # Get the default gateway (the way to reach the Internet)
+    IPv4gw=$(awk '{print $3}' <<< "${route}")
+  fi
 }
 
 # Get available interfaces that are UP
 get_available_interfaces() {
-  # There may be more than one so it's all stored in a variable
-  availableInterfaces=$(ip --oneline link show up | grep -v "lo" | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1)
+  if [[ os_version == "FreeBSD" ]]; then
+    # There may be more than one so it's all stored in a variable
+    availableInterfaces=$(ifconfig -l | tr ' ' '\n')
+  else
+    # There may be more than one so it's all stored in a variable
+    availableInterfaces=$(ip --oneline link show up | grep -v "lo" | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1)
+  fi
 }
 
 # A function for displaying the dialogs the user sees when first running the installer
@@ -2192,7 +2222,7 @@ main() {
 
 }
 
-#
+# Run main function
 if [[ "${PH_TEST}" != true ]] ; then
   main "$@"
 fi
