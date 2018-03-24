@@ -37,7 +37,7 @@ os_version=`uname`
 PI_HOLE_FILES=(chronometer list piholeDebug piholeLogFlush setupLCD update version gravity uninstall webpage)
 
 # Check if the host is FreeBSD
-if [[${os_version} == "FreeBSD"]]; then
+if [[ ${os_version} == "FreeBSD" ]]; then
     # Location for final installation log storage
     installLogLoc=/var/log/pihole-install.log
     # This is an important file as it contains information specific to the machine it's being installed on
@@ -403,7 +403,7 @@ resetRepo() {
 # Without this information, we won't know where to Pi-hole will be found
 find_IPv4_information() {
   # Check if the host is FreeBSD
-  if [[${os_version} == "FreeBSD"]]; then
+  if [[ ${os_version} == "FreeBSD" ]]; then
     # Named, local variables
     local route
     # Find IP used to route to outside world by checking the the route to Google's public DNS server
@@ -435,7 +435,7 @@ find_IPv4_information() {
 
 # Get available interfaces that are UP
 get_available_interfaces() {
-  if [[${os_version} == "FreeBSD"]]; then
+  if [[ ${os_version} == "FreeBSD" ]]; then
     # There may be more than one so it's all stored in a variable
     availableInterfaces=$(ifconfig -l | tr ' ' '\n')
   else
