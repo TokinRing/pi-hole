@@ -1265,7 +1265,7 @@ notify_package_updates_available() {
       echo ""
     fi
   elif [[ ${os_version} == "FreeBSD" ]]; then
-    if [[ "${updatesToInstall}" -eq 7]]
+    if [[ "${updatesToInstall}" -ge 7 ]] ; then
       #
       echo -e "${OVER}  ${TICK} ${str}... up to date!"
       echo ""
