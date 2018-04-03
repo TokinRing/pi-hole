@@ -250,8 +250,8 @@ elif command -v pkg &> /dev/null; then
 
   # UPDATE_PKG_CACHE=":"
   PKG_INSTALL=(${PKG_MANAGER} install -y)
-  PKG_COUNT="${PKG_MANAGER} upgrade | wc -l"
-  INSTALLER_DEPS=(git newt)
+  PKG_COUNT="${PKG_MANAGER} update && ${PKG_MANAGER} upgrade | wc -l"
+  INSTALLER_DEPS=(git newt netmask)
   PIHOLE_DEPS=(curl dnsmasq findutils nmap netcat sudo unzip wget libidn2 psmisc)
   PIHOLE_WEB_DEPS=(lighttpd php56 php56-sqlite3 php56-pdo)
   LIGHTTPD_USER="lighttpd"
@@ -1255,6 +1255,17 @@ notify_package_updates_available() {
   if [[ -d "/lib/modules/$(uname -r)" ]]; then
     #
     if [[ "${updatesToInstall}" -eq 0 ]]; then
+      #
+      echo -e "${OVER}  ${TICK} ${str}... up to date!"
+      echo ""
+    else
+      #
+      echo -e "${OVER}  ${TICK} ${str}... ${updatesToInstall} updates available"
+      echo -e "  ${INFO} ${COL_LIGHT_GREEN}It is recommended to update your OS after installing the Pi-hole! ${COL_NC}"
+      echo ""
+    fi
+  elif [[ ${os_version} == "FreeBSD" ]]; then
+    if [[ "${updatesToInstall}" -eq 7]]
       #
       echo -e "${OVER}  ${TICK} ${str}... up to date!"
       echo ""
