@@ -1333,20 +1333,34 @@ install_dependent_packages() {
       echo ""
       #
       return 0
+  elif [[ ${os_version} == "FreeBSD" ]]; then
+    # Install FreeBSD packages
+    for i in "${argArray1[@]}"; do
+      echo -ne "  ${INFO} Checking for $i..."
+      #
+      if ${PKG_MANAGER} info -q "${i}" &> /dev/null; then
+        echo -e "${OVER}  ${TICK} Checking for $i"
+      else
+        echo -e "${OVER}  ${INFO} Checking for $i (will be installed)"
+        #
+        installArray+=("${i}")
+      fi
+    done
+  else
+    # Install Fedora/CentOS packages
+    for i in "${argArray1[@]}"; do
+      echo -ne "  ${INFO} Checking for $i..."
+      #
+      if ${PKG_MANAGER} -q list installed "${i}" &> /dev/null; then
+        echo -e "${OVER}  ${TICK} Checking for $i"
+      else
+        echo -e "${OVER}  ${INFO} Checking for $i (will be installed)"
+        #
+        installArray+=("${i}")
+      fi
+    done
   fi
 
-  # Install Fedora/CentOS packages
-  for i in "${argArray1[@]}"; do
-    echo -ne "  ${INFO} Checking for $i..."
-    #
-    if ${PKG_MANAGER} -q list installed "${i}" &> /dev/null; then
-      echo -e "${OVER}  ${TICK} Checking for $i"
-    else
-      echo -e "${OVER}  ${INFO} Checking for $i (will be installed)"
-      #
-      installArray+=("${i}")
-    fi
-  done
   #
   if [[ "${#installArray[@]}" -gt 0 ]]; then
     #
